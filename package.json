@@ -1,0 +1,9 @@
+{
+  "name": "foxmission11assignment",
+  "private": true,
+  "scripts": {
+    "build:frontend": "npm --prefix frontend install && npm --prefix frontend run build",
+    "start:backend": "dotnet run --project backend/backend.csproj --launch-profile http",
+    "start:all": "npm run build:frontend && npm run start:backend"
+  }
+}
