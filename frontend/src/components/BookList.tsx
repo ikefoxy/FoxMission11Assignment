@@ -43,9 +43,17 @@ export default function BookList() {
   const [isViewingCart, setIsViewingCart] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [statusMessage, setStatusMessage] = useState('')
   const [cart, setCart] = useState<CartItem[]>(() => {
     // Keep the cart for the duration of the browser session.
-    const savedCart = sessionStorage.getItem(CART_STORAGE_KEY)
+    let savedCart: string | null = null
+    try {
+      savedCart = sessionStorage.getItem(CART_STORAGE_KEY)
+    } catch {
+      // Keep working even when storage is blocked by browser settings.
+      return []
+    }
+
     if (!savedCart) {
       return []
     }
@@ -127,7 +135,11 @@ export default function BookList() {
   }, [pageNum, pageSize, sortOrder, selectedCategory])
 
   useEffect(() => {
-    sessionStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart))
+    try {
+      sessionStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart))
+    } catch {
+      // Ignore storage write errors so cart actions still work in memory.
+    }
   }, [cart])
 
   // Add clicked books to cart and increase quantity for duplicates.
@@ -142,6 +154,7 @@ export default function BookList() {
 
       return [...prev, { ...book, quantity: 1 }]
     })
+    setStatusMessage(`Added "${book.title}" to cart.`)
   }
 
   const updateQuantity = (bookID: number, quantity: number) => {
@@ -153,7 +166,9 @@ export default function BookList() {
   }
 
   const removeFromCart = (bookID: number) => {
+    const bookTitle = cart.find((item) => item.bookID === bookID)?.title ?? 'Book'
     setCart((prev) => prev.filter((item) => item.bookID !== bookID))
+    setStatusMessage(`Removed "${bookTitle}" from cart.`)
   }
 
   const cartQuantity = useMemo(
@@ -235,11 +250,7 @@ export default function BookList() {
 
           <div className="ms-auto d-flex align-items-center gap-2">
             <span className="badge text-bg-primary fs-6">{cartQuantity} in cart</span>
-            <button
-              className="btn btn-outline-primary"
-              onClick={() => setIsViewingCart(true)}
-              disabled={cart.length === 0}
-            >
+            <button className="btn btn-outline-primary" onClick={() => setIsViewingCart(true)}>
               View Cart
             </button>
           </div>
@@ -250,6 +261,9 @@ export default function BookList() {
         </div>
 
         {error && <div className="alert alert-danger">{error}</div>}
+        <p className="visually-hidden" role="status" aria-live="polite">
+          {statusMessage}
+        </p>
 
         {!isViewingCart && (
           <>
@@ -257,6 +271,7 @@ export default function BookList() {
               <table className="table table-striped table-hover table-bordered align-middle bg-white">
                 <thead className="table-dark">
                   <tr>
+                    <th>Actions</th>
                     <th>Title</th>
                     <th>Author</th>
                     <th>Publisher</th>
@@ -265,7 +280,6 @@ export default function BookList() {
                     <th>Category</th>
                     <th>Pages</th>
                     <th>Price</th>
-                    <th>Cart</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -284,6 +298,15 @@ export default function BookList() {
                   ) : (
                     books.map((book) => (
                       <tr key={book.bookID}>
+                        <td>
+                          <button
+                            className="btn btn-sm btn-success"
+                            onClick={() => addToCart(book)}
+                            aria-label={`Add ${book.title} to cart`}
+                          >
+                            Add to Cart
+                          </button>
+                        </td>
                         <td>{book.title}</td>
                         <td>{book.author}</td>
                         <td>{book.publisher}</td>
@@ -292,11 +315,6 @@ export default function BookList() {
                         <td>{book.category}</td>
                         <td>{book.pageCount}</td>
                         <td>${book.price.toFixed(2)}</td>
-                        <td>
-                          <button className="btn btn-sm btn-success" onClick={() => addToCart(book)}>
-                            Add
-                          </button>
-                        </td>
                       </tr>
                     ))
                   )}
@@ -423,7 +441,6 @@ export default function BookList() {
             <button
               className="btn btn-primary w-100"
               onClick={() => setIsViewingCart(true)}
-              disabled={cart.length === 0}
             >
               Open Cart
             </button>
