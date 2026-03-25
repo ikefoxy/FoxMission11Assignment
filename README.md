@@ -13,6 +13,8 @@ Combined Mission #11 + Mission #12 bookstore app using ASP.NET Core API + React 
 - "Continue Shopping" button that returns to the same list page/filter state
 - Cart summary shown on the main book list page
 - Bootstrap grid layout (`row`, `col-lg-8`, `col-lg-4`)
+- Extra Bootstrap feature: `sticky-top` for the cart summary card
+- Extra Bootstrap feature: `progress` / `progress-bar` for cart fullness
 
 ## TA Bootstrap note
 

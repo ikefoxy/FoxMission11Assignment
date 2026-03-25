@@ -1,3 +1,31 @@
 h1 {
   font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.form-select {
+  min-width: 140px;
+}
+
+.card {
+  border-radius: 0.75rem;
+}
+
+.book-table th,
+.book-table td {
+  vertical-align: middle;
+}
+
+.book-table thead th {
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.book-action-btn {
+  min-width: 110px;
+}
+
+.pagination .page-link {
+  min-width: 42px;
+  text-align: center;
 }

@@ -268,10 +268,9 @@ export default function BookList() {
         {!isViewingCart && (
           <>
             <div className="table-responsive">
-              <table className="table table-striped table-hover table-bordered align-middle bg-white">
+              <table className="table table-striped table-hover table-bordered align-middle bg-white book-table">
                 <thead className="table-dark">
                   <tr>
-                    <th>Actions</th>
                     <th>Title</th>
                     <th>Author</th>
                     <th>Publisher</th>
@@ -280,6 +279,7 @@ export default function BookList() {
                     <th>Category</th>
                     <th>Pages</th>
                     <th>Price</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -298,15 +298,6 @@ export default function BookList() {
                   ) : (
                     books.map((book) => (
                       <tr key={book.bookID}>
-                        <td>
-                          <button
-                            className="btn btn-sm btn-success"
-                            onClick={() => addToCart(book)}
-                            aria-label={`Add ${book.title} to cart`}
-                          >
-                            Add to Cart
-                          </button>
-                        </td>
                         <td>{book.title}</td>
                         <td>{book.author}</td>
                         <td>{book.publisher}</td>
@@ -315,6 +306,15 @@ export default function BookList() {
                         <td>{book.category}</td>
                         <td>{book.pageCount}</td>
                         <td>${book.price.toFixed(2)}</td>
+                        <td className="text-end">
+                          <button
+                            className="btn btn-sm btn-success book-action-btn"
+                            onClick={() => addToCart(book)}
+                            aria-label={`Add ${book.title} to cart`}
+                          >
+                            Add to Cart
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
