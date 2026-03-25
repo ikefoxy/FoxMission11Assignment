@@ -10,7 +10,36 @@ var databasePath = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath
 // React production build output that ASP.NET will serve as static files.
 var frontendDistPath = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "frontend", "dist"));
 
-app.MapGet("/api/books", (int? pageSize, int? pageNum, string? sortOrder) =>
+app.MapGet("/api/categories", () =>
+{
+    if (!File.Exists(databasePath))
+    {
+        return Results.Problem($"Database file not found at {databasePath}", statusCode: 500);
+    }
+
+    var categories = new List<string>();
+
+    using var connection = new SqliteConnection($"Data Source={databasePath}");
+    connection.Open();
+
+    // Return distinct categories to drive the UI filter dropdown.
+    using var command = connection.CreateCommand();
+    command.CommandText = @"
+        SELECT DISTINCT Category
+        FROM Books
+        ORDER BY Category COLLATE NOCASE ASC";
+
+    using var reader = command.ExecuteReader();
+
+    while (reader.Read())
+    {
+        categories.Add(reader.GetString(0));
+    }
+
+    return Results.Ok(categories);
+});
+
+app.MapGet("/api/books", (int? pageSize, int? pageNum, string? sortOrder, string? category) =>
 {
     if (!File.Exists(databasePath))
     {
@@ -21,6 +50,10 @@ app.MapGet("/api/books", (int? pageSize, int? pageNum, string? sortOrder) =>
     var safePageNum = Math.Max(pageNum ?? 1, 1);
     // Only allow ASC/DESC so the ORDER BY stays safe and predictable.
     var normalizedSortOrder = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase) ? "DESC" : "ASC";
+    // Treat empty category as "All" so the UI can opt out of filtering.
+    var normalizedCategory = string.IsNullOrWhiteSpace(category) || string.Equals(category, "all", StringComparison.OrdinalIgnoreCase)
+        ? null
+        : category.Trim();
 
     var books = new List<Book>();
     var totalBooks = 0;
@@ -30,7 +63,15 @@ app.MapGet("/api/books", (int? pageSize, int? pageNum, string? sortOrder) =>
 
     using (var countCommand = connection.CreateCommand())
     {
-        countCommand.CommandText = "SELECT COUNT(*) FROM Books";
+        countCommand.CommandText = normalizedCategory is null
+            ? "SELECT COUNT(*) FROM Books"
+            : "SELECT COUNT(*) FROM Books WHERE Category = @category";
+
+        if (normalizedCategory is not null)
+        {
+            countCommand.Parameters.AddWithValue("@category", normalizedCategory);
+        }
+
         totalBooks = Convert.ToInt32(countCommand.ExecuteScalar());
     }
 
@@ -41,8 +82,14 @@ app.MapGet("/api/books", (int? pageSize, int? pageNum, string? sortOrder) =>
         command.CommandText = $@"
             SELECT BookID, Title, Author, Publisher, ISBN, Classification, Category, PageCount, Price
             FROM Books
+            {(normalizedCategory is null ? string.Empty : "WHERE Category = @category")}
             ORDER BY Title COLLATE NOCASE {normalizedSortOrder}
             LIMIT @pageSize OFFSET @offset";
+
+        if (normalizedCategory is not null)
+        {
+            command.Parameters.AddWithValue("@category", normalizedCategory);
+        }
 
         command.Parameters.AddWithValue("@pageSize", safePageSize);
         command.Parameters.AddWithValue("@offset", offset);
@@ -75,7 +122,8 @@ app.MapGet("/api/books", (int? pageSize, int? pageNum, string? sortOrder) =>
         PageSize = safePageSize,
         TotalBooks = totalBooks,
         TotalPages = totalPages,
-        SortOrder = normalizedSortOrder.ToLowerInvariant()
+        SortOrder = normalizedSortOrder.ToLowerInvariant(),
+        SelectedCategory = normalizedCategory ?? "all"
     });
 });
 
@@ -131,4 +179,5 @@ public sealed class PagedBooksResponse
     public int TotalBooks { get; set; }
     public int TotalPages { get; set; }
     public string SortOrder { get; set; } = "asc";
+    public string SelectedCategory { get; set; } = "all";
 }
